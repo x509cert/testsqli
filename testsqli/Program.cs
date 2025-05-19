@@ -13,7 +13,7 @@ app.MapGet("/users", async (string? name) =>
 
     using var connection = new SqlConnection(connectionString);
     //var sql = "SELECT Id, Name, Email FROM Users WHERE Name = @Name";
-    var sql = "SELECT Id, Name, Email FROM Users WHERE Name = " + Name;
+    var sql = "SELECT Id, Name, Email FROM Users WHERE Name = " + name;
 
     var users = await connection.QueryAsync<User>(sql, new { Name = name });
     return Results.Ok(users);
