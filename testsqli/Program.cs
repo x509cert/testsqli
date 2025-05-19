@@ -12,7 +12,8 @@ app.MapGet("/users", async (string? name) =>
         return Results.BadRequest("Name query parameter is required.");
 
     using var connection = new SqlConnection(connectionString);
-    var sql = "SELECT Id, Name, Email FROM Users WHERE Name = @Name";
+    //var sql = "SELECT Id, Name, Email FROM Users WHERE Name = @Name";
+    var sql = "SELECT Id, Name, Email FROM Users WHERE Name = " + Name;
 
     var users = await connection.QueryAsync<User>(sql, new { Name = name });
     return Results.Ok(users);
