@@ -1,24 +1,51 @@
-using Microsoft.Data.SqlClient;
-using Dapper;
+using System;
+using System.Data.SqlClient;
+using System.Net;
 
-var builder = WebApplication.CreateBuilder(args);
-var app = builder.Build();
-
-string connectionString = "Server=localhost;Database=MyAppDb;Trusted_Connection=True;";
-
-app.MapGet("/users", async (string? name) =>
+class Program
 {
-    if (string.IsNullOrWhiteSpace(name))
-        return Results.BadRequest("Name query parameter is required.");
+    static void Main()
+    {
+        var listener = new HttpListener();
+        listener.Prefixes.Add("http://localhost:8080/");
+        listener.Start();
+        Console.WriteLine("Listening on http://localhost:8080/");
 
-    using var connection = new SqlConnection(connectionString);
-    //var sql = "SELECT Id, Name, Email FROM Users WHERE Name = @Name";
-    var sql = "SELECT Id, Name, Email FROM Users WHERE Name = " + name;
+        while (true)
+        {
+            var context = listener.GetContext();
+            var request = context.Request;
+            var response = context.Response;
 
-    var users = await connection.QueryAsync<User>(sql, new { Name = name });
-    return Results.Ok(users);
-});
+            var idStr = request.QueryString["id"];
+            if (!int.TryParse(idStr, out var id))
+            {
+                WriteResponse(response, "Invalid ID");
+                continue;
+            }
 
-app.Run();
+            var connectionString = "Server=localhost;Database=TestDB;Integrated Security=true;";
+            var sql = "SELECT Name FROM Users WHERE Id = @Id";
 
-record User(int Id, string Name, string Email);
+            string name = null;
+            using (var connection = new SqlConnection(connectionString))
+            using (var command = new SqlCommand(sql, connection))
+            {
+                command.Parameters.AddWithValue("@Id", id);
+                connection.Open();
+                var result = command.ExecuteScalar();
+                name = result?.ToString();
+            }
+
+            WriteResponse(response, name ?? "User not found");
+        }
+    }
+
+    static void WriteResponse(HttpListenerResponse response, string content)
+    {
+        var buffer = System.Text.Encoding.UTF8.GetBytes(content);
+        response.ContentLength64 = buffer.Length;
+        using var output = response.OutputStream;
+        output.Write(buffer, 0, buffer.Length);
+    }
+}
